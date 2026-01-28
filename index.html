@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出席管理システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .input-section {
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            transition: border-color 0.3s;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-record {
+            background-color: #667eea;
+            color: white;
+        }
+        .btn-record:hover {
+            background-color: #5568d3;
+        }
+        .btn-download {
+            background-color: #48bb78;
+            color: white;
+        }
+        .btn-download:hover {
+            background-color: #38a169;
+        }
+        .btn-clear {
+            background-color: #f56565;
+            color: white;
+        }
+        .btn-clear:hover {
+            background-color: #e53e3e;
+        }
+        .message {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .message.success {
+            background-color: #c6f6d5;
+            color: #22543d;
+            display: block;
+        }
+        .message.error {
+            background-color: #fed7d7;
+            color: #742a2a;
+            display: block;
+        }
+        .attendance-list {
+            margin-top: 30px;
+        }
+        .attendance-list h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .attendance-item {
+            background-color: #f7fafc;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .attendance-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .attendance-time {
+            color: #666;
+            font-size: 14px;
+        }
+        .delete-btn {
+            background-color: #e53e3e;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-btn:hover {
+            background-color: #c53030;
+        }
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 出席管理システム</h1>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="input-section">
+            <label for="personId">個人番号を入力:</label>
+            <input type="number" id="personId" placeholder="例: 1" min="1" max="999">
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-record" onclick="recordAttendance()">出席記録</button>
+            <button class="btn-download" onclick="downloadAttendance()">HTMLで保存</button>
+        </div>
+        
+        <button class="btn-clear" style="width: 100%;" onclick="clearAllRecords()">すべてをクリア</button>
+        
+        <div class="attendance-list">
+            <h2>📊 出席記録</h2>
+            <div id="attendanceItems"></div>
+        </div>
+    </div>
+
+    <script>
+        // サンプルの個人データ（実際の使用時に変更してください）
+        const people = {
+            1: '田中太郎',
+            2: '佐藤花子',
+            3: '鈴木次郎',
+            4: '高橋美咲',
+            5: '伊藤健一',
+            6: '渡辺由美',
+            7: '山田翔太',
+            8: '中村美優',
+            9: '佐々木拓也',
+            10: '鈴木由衣'
+        };
+
+        // ページロード時に設定を初期化
+        window.addEventListener('load', () => {
+            loadAttendanceRecords();
+            document.getElementById('personId').focus();
+        });
+
+        // Enterキーで出席記録
+        document.getElementById('personId').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                recordAttendance();
+            }
+        });
+
+        function recordAttendance() {
+            const input = document.getElementById('personId');
+            const id = parseInt(input.value);
+
+            if (!input.value) {
+                showMessage('番号を入力してください', 'error');
+                return;
+            }
+
+            if (!people[id]) {
+                showMessage(`番号 ${id} は登録されていません`, 'error');
+                input.value = '';
+                input.focus();
+                return;
+            }
+
+            const name = people[id];
+            const now = new Date();
+            const time = now.toLocaleString('ja-JP');
+
+            // ローカルストレージに保存
+            let records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+            records.push({
+                id: id,
+                name: name,
+                time: time
+            });
+            localStorage.setItem('attendanceRecords', JSON.stringify(records));
+
+            showMessage(`${name} さんの出席を記録しました`, 'success');
+            input.value = '';
+            input.focus();
+
+            loadAttendanceRecords();
+        }
+
+        function loadAttendanceRecords() {
+            const records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+            const container = document.getElementById('attendanceItems');
+
+            if (records.length === 0) {
+                container.innerHTML = '<div class="empty-message">まだ出席記録がありません</div>';
+                return;
+            }
+
+            container.innerHTML = records.map((record, index) => `
+                <div class="attendance-item">
+                    <div>
+                        <div class="attendance-name">${record.name}</div>
+                        <div class="attendance-time">${record.time}</div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteRecord(${index})">削除</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteRecord(index) {
+            let records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+            records.splice(index, 1);
+            localStorage.setItem('attendanceRecords', JSON.stringify(records));
+            loadAttendanceRecords();
+        }
+
+        function clearAllRecords() {
+            if (confirm('すべての出席記録を削除しますか？')) {
+                localStorage.removeItem('attendanceRecords');
+                loadAttendanceRecords();
+                showMessage('すべての記録を削除しました', 'success');
+            }
+        }
+
+        function downloadAttendance() {
+            const records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+
+            if (records.length === 0) {
+                showMessage('保存する記録がありません', 'error');
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const html = generateHTML(records, dateStr);
+
+            // HTMLファイルをダウンロード
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `出席記録_${dateStr}.html`;
+            link.click();
+
+            showMessage('出席記録をHTMLファイルで保存しました', 'success');
+        }
+
+        function generateHTML(records, dateStr) {
+            const recordsHTML = records.map(record => `
+                <tr>
+                    <td>${record.name}</td>
+                    <td>${record.time}</td>
+                </tr>
+            `).join('');
+
+            const totalCount = records.length;
+
+            return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出席記録 - ${dateStr}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .date-info {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            background-color: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f0f0f0;
+        }
+        .summary {
+            background-color: #f0f4ff;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 16px;
+            color: #333;
+        }
+        .print-button {
+            text-align: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #5568d3;
+        }
+        @media print {
+            body {
+                background: white;
+            }
+            button {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 出席記録</h1>
+        <div class="date-info">生成日時: ${new Date().toLocaleString('ja-JP')}</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>個人名</th>
+                    <th>出席日時</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${recordsHTML}
+            </tbody>
+        </table>
+        
+        <div class="summary">
+            <strong>合計出席数: ${totalCount} 名</strong>
+        </div>
+        
+        <div class="print-button">
+            <button onclick="window.print()">🖨️ 印刷</button>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            setTimeout(() => {
+                messageDiv.className = 'message';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

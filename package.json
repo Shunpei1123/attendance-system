@@ -1,0 +1,12 @@
+{
+  "name": "attendance-system",
+  "version": "1.0.0",
+  "description": "管理出席システム",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["attendance", "system"],
+  "author": "",
+  "license": "MIT"
+}
